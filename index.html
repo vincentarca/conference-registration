@@ -6,15 +6,37 @@
     <title>Conference Registration</title>
 
 <script>
+    document.addEventListener("DOMContentLoaded", checkPassword);
+
     function checkPassword() {
-        const password = prompt("Enter password:");
-        if (password !== "gamaictm2025") {
-            alert("Access Denied!");
-            window.location.href = "https://google.com"; // Redirect unauthorized users
+        const savedPassword = "gamaictm2025"; // Set your password
+        const enteredPassword = localStorage.getItem("password");
+
+        if (enteredPassword !== savedPassword) {
+            document.body.innerHTML = `
+                <div style="text-align: center; margin-top: 100px;">
+                    <h2>🔒 Conference Registration - Secure Access</h2>
+                    <p>Please enter the password to continue:</p>
+                    <input type="password" id="passwordInput" placeholder="Enter password" style="padding: 10px; font-size: 16px;">
+                    <button onclick="verifyPassword()" style="padding: 10px 20px; font-size: 16px; margin-top: 10px;">Submit</button>
+                </div>
+            `;
         }
     }
-    window.onload = checkPassword;
+
+    function verifyPassword() {
+        const savedPassword = "gamaictm2025";
+        const enteredPassword = document.getElementById("passwordInput").value;
+
+        if (enteredPassword === savedPassword) {
+            localStorage.setItem("password", enteredPassword);
+            location.reload();
+        } else {
+            alert("❌ Incorrect Password! Access Denied.");
+        }
+    }
 </script>
+
 
     <style>
         body {
