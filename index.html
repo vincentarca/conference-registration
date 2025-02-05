@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Registration</title>
+
+<script>
+    function checkPassword() {
+        const password = prompt("Enter password:");
+        if (password !== "gamaictm2025") {
+            alert("Access Denied!");
+            window.location.href = "https://google.com"; // Redirect unauthorized users
+        }
+    }
+    window.onload = checkPassword;
+</script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .header-image {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+        }
+        input, select {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 20px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #output {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+            width: 80%;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        .entry {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .info {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.4;
+        }
+        .sub-info {
+            font-size: 18px;
+            font-weight: normal;
+            color: #555;
+        }
+        .buttons-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: flex-end;
+        }
+        .btn-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .mark-btn, .cancel-btn {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            width: 100px;
+            height: 50px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mark-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+            width: 60px;
+            height: 50px;
+            font-size: 12px;
+        }
+        /* Floating Export Button */
+        .export-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        .export-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        let attendees = [];
+        let attendance = JSON.parse(localStorage.getItem("attendance")) || {};
+        let filterMode = "all";
+
+        const events = {
+            "Workshop 1 ACF": "W ACF",
+            "Workshop 2 Wolbachia": "W Wolbachia",
+            "Workshop 3 Modelling": "W Modelling",
+            "Conference Day 1": "Conference D1",
+            "Conference Day 2": "Conference D2"
+        };
+
+        async function loadAttendees() {
+            const response = await fetch("attendees.csv?" + new Date().getTime());
+            const data = await response.text();
+            
+            const rows = data.split("\n").slice(1);
+            attendees = rows.map(row => {
+                const columns = row.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+                if (columns) {
+                    const name = columns[0].replace(/"/g, '').trim();
+                    const roleInstitution = columns[1].replace(/"/g, '').trim();
+                    const access = columns[2].replace(/"/g, '').trim();
+                    return { name, roleInstitution, access };
+                }
+            }).filter(Boolean);
+
+            updateUI();
+        }
+
+        function searchAttendee() {
+            const query = document.getElementById("search").value.toLowerCase();
+            const results = attendees.filter(att => 
+                att.name.toLowerCase().includes(query) || 
+                att.roleInstitution.toLowerCase().includes(query)
+            );
+
+            displayAttendees(results);
+        }
+
+        function displayAttendees(list) {
+            let filteredList = list;
+
+            if (filterMode === "attended") {
+                filteredList = list.filter(att => 
+                    Object.keys(events).some(event => attendance[att.name] && attendance[att.name][event])
+                );
+            }
+
+            if (filteredList.length > 0) {
+                document.getElementById("output").innerHTML = filteredList.map(att => {
+                    return `
+                    <div class="entry">
+                        <div>
+                            <div class="info">${att.name}</div>
+                            <div class="sub-info">${att.roleInstitution}</div>
+                            <div class="sub-info">${att.access}</div>
+                        </div>
+                        <div class="buttons-container">
+                            ${Object.keys(events).map(event => createButton(att.name, event)).join("")}
+                        </div>
+                    </div>`;
+                }).join("");
+            } else {
+                document.getElementById("output").innerHTML = "No match found.";
+            }
+        }
+
+        function createButton(name, event) {
+            const isAttended = attendance[name] && attendance[name][event];
+            return `
+                <div class="btn-group">
+                    <button class="mark-btn" onclick="markAsAttended('${name}', '${event}')" ${isAttended ? 'disabled' : ''}>
+                        ${isAttended ? `✔` : events[event]}
+                    </button>
+                    ${isAttended ? `<button class="cancel-btn" onclick="cancelAttendance('${name}', '${event}')">X</button>` : ''}
+                </div>
+            `;
+        }
+
+        function markAsAttended(name, event) {
+            if (!attendance[name]) {
+                attendance[name] = {};
+            }
+            attendance[name][event] = new Date().toLocaleString();
+            localStorage.setItem("attendance", JSON.stringify(attendance));
+            searchAttendee();
+        }
+
+        function cancelAttendance(name, event) {
+            if (attendance[name]) {
+                delete attendance[name][event];
+                if (Object.keys(attendance[name]).length === 0) {
+                    delete attendance[name];
+                }
+            }
+            localStorage.setItem("attendance", JSON.stringify(attendance));
+            searchAttendee();
+        }
+
+        function exportAttendanceToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Name,Role/Institution,Access Level";
+            Object.keys(events).forEach(event => csvContent += `,"${event} Check-in Time"`);
+            csvContent += "\n";
+
+            attendees.forEach(att => {
+                if (attendance[att.name]) {
+                    let row = `"${att.name}","${att.roleInstitution}","${att.access}"`;
+                    Object.keys(events).forEach(event => {
+                        row += attendance[att.name][event] ? `,"${attendance[att.name][event]}"` : ',"Not Attended"';
+                    });
+                    csvContent += row + "\n";
+                }
+            });
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "attendance.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
+        function updateUI() {
+            searchAttendee();
+        }
+
+        window.onload = loadAttendees;
+    </script>
+</head>
+<body>
+    <img src="header.jpg" alt="Conference Header" class="header-image">
+    <button class="export-btn" onclick="exportAttendanceToCSV()">📥 Export CSV</button>
+    <h2>Conference Registration</h2>
+    <input type="text" id="search" placeholder="Search by Name, Role, or Institution..." onkeyup="searchAttendee()">
+    <div id="output">Enter a name, role, or institution to search.</div>
+</body>
+</html>
